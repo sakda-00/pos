@@ -152,7 +152,7 @@
                     </div>
                 </div>
 
-                <!-- Products Grid (ปรับเพิ่ม md:grid-cols-3 สำหรับแท็บเล็ต) -->
+                <!-- Products Grid -->
                 <div class="flex-1 overflow-y-auto p-4">
                     <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                         <!-- Dynamic Products -->
@@ -160,7 +160,7 @@
                 </div>
             </div>
 
-            <!-- Right Side: Order Cart (ปรับขนาด md:w-80 ให้เหมาะสมกับจอแท็บเล็ต) -->
+            <!-- Right Side: Order Cart -->
             <div class="w-full md:w-80 lg:w-96 bg-white flex flex-col h-full shrink-0 border-l border-slate-200 shadow-lg md:shadow-none">
                 <!-- Cart Header -->
                 <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -278,7 +278,7 @@
                 </div>
             </div>
 
-            <!-- Stats Grid (Daily Stats for Current Day) -->
+            <!-- Stats Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-chumOrange-100 text-chumOrange-600 flex items-center justify-center text-xl">
@@ -309,7 +309,7 @@
                 </div>
             </div>
 
-            <!-- DETAILED PRODUCT SALES BREAKDOWN FOR TODAY -->
+            <!-- DETAILED PRODUCT SALES BREAKDOWN -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
@@ -335,9 +335,8 @@
                 </div>
             </div>
 
-            <!-- CHART & PAYMENT METHOD BREAKDOWN SECTION -->
+            <!-- CHART & PAYMENT METHOD BREAKDOWN -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Weekly Sales Chart (2 Cols on Large Screen) -->
                 <div class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
                     <div class="flex items-center justify-between mb-4">
                         <div>
@@ -351,7 +350,6 @@
                     </div>
                 </div>
 
-                <!-- PAYMENT METHOD BREAKDOWN (1 Col on Large Screen) -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
                     <div class="mb-4">
                         <h3 class="font-bold text-slate-800 text-base">ยอดการชำระเงินแต่ละประเภท</h3>
@@ -422,6 +420,18 @@
                 <div class="text-center p-4 bg-chumOrange-50 rounded-2xl border border-chumOrange-100">
                     <span class="text-xs text-chumOrange-700 font-medium">ยอดชำระทั้งสิ้น</span>
                     <div id="payModalAmount" class="text-3xl font-black text-chumOrange-600 mt-0.5">฿0</div>
+                </div>
+
+                <!-- DISCOUNT SECTION -->
+                <div class="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-600">ส่วนลด (บาท)</label>
+                    <div class="grid grid-cols-5 gap-1.5">
+                        <button type="button" onclick="applyDiscount(0)" id="discBtn-0" class="py-2 bg-chumOrange-600 text-white rounded-xl text-xs font-bold transition shadow-sm">0฿</button>
+                        <button type="button" onclick="applyDiscount(5)" id="discBtn-5" class="py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold transition">5฿</button>
+                        <button type="button" onclick="applyDiscount(10)" id="discBtn-10" class="py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold transition">10฿</button>
+                        <button type="button" onclick="applyDiscount(20)" id="discBtn-20" class="py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold transition">20฿</button>
+                        <input type="number" id="customDiscountInput" oninput="applyCustomDiscount()" placeholder=" " min="0" class="col-span-1 p-1 text-center bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-chumOrange-500">
+                    </div>
                 </div>
 
                 <!-- Payment Methods Tabs -->
@@ -627,6 +637,7 @@
         let activePaymentMethod = 'cash';
         let selectedProductForStock = null;
         let weeklyChartInstance = null;
+        let currentDiscount = 0;
 
         window.addEventListener('DOMContentLoaded', () => {
             loadDataFromGoogleSheet();
@@ -695,9 +706,17 @@
 
         function getOrderDateKey(order) {
             if (order.rawDate) {
-                return new Date(order.rawDate).toISOString().split('T')[0];
-            } else if (order.datetime) {
-                const parts = order.datetime.split(' ')[0].split('/');
+                const d = new Date(order.rawDate);
+                if (!isNaN(d.getTime())) {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+            } 
+            if (order.datetime) {
+                const datePart = order.datetime.split(' ')[0];
+                const parts = datePart.split('/');
                 if (parts.length === 3) {
                     const day = parts[0].padStart(2, '0');
                     const month = parts[1].padStart(2, '0');
@@ -707,6 +726,20 @@
                 }
             }
             return '';
+        }
+
+        function formatOrderDateTime(order) {
+            if (order.rawDate) {
+                const d = new Date(order.rawDate);
+                if (!isNaN(d.getTime())) {
+                    const thaiYear = d.getFullYear() + 543;
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                    return `${day}/${month}/${thaiYear} ${timeStr}`;
+                }
+            }
+            return order.datetime || '-';
         }
 
         // --- NAVIGATION CONTROLLER ---
@@ -927,8 +960,11 @@
         function openPaymentModal() {
             if (cart.length === 0) return;
 
-            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            document.getElementById('payModalAmount').innerText = `฿${totalPrice.toLocaleString()}`;
+            currentDiscount = 0;
+            document.getElementById('customDiscountInput').value = '';
+            updateDiscountUI(0);
+
+            updatePayModalAmount();
             document.getElementById('cashInput').value = '';
             document.getElementById('cashChange').innerText = '฿0';
 
@@ -938,6 +974,56 @@
 
         function closePaymentModal() {
             document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        function applyDiscount(amount) {
+            currentDiscount = amount;
+            document.getElementById('customDiscountInput').value = '';
+            updateDiscountUI(amount);
+            updatePayModalAmount();
+            calculateChange();
+        }
+
+        function applyCustomDiscount() {
+            const val = parseFloat(document.getElementById('customDiscountInput').value);
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            if (isNaN(val) || val < 0) {
+                currentDiscount = 0;
+            } else if (val > subtotal) {
+                currentDiscount = subtotal;
+            } else {
+                currentDiscount = val;
+            }
+
+            [0, 5, 10, 20].forEach(d => {
+                const btn = document.getElementById(`discBtn-${d}`);
+                if (btn) {
+                    btn.className = 'py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold transition';
+                }
+            });
+
+            updatePayModalAmount();
+            calculateChange();
+        }
+
+        function updateDiscountUI(activeAmount) {
+            [0, 5, 10, 20].forEach(d => {
+                const btn = document.getElementById(`discBtn-${d}`);
+                if (btn) {
+                    if (d === activeAmount) {
+                        btn.className = 'py-2 bg-chumOrange-600 text-white rounded-xl text-xs font-bold transition shadow-sm';
+                    } else {
+                        btn.className = 'py-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold transition';
+                    }
+                }
+            });
+        }
+
+        function updatePayModalAmount() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const finalAmount = Math.max(0, subtotal - currentDiscount);
+            document.getElementById('payModalAmount').innerText = `฿${finalAmount.toLocaleString()}`;
         }
 
         function selectPaymentMethod(method) {
@@ -958,11 +1044,12 @@
         }
 
         function setQuickCash(amount) {
-            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const finalAmount = Math.max(0, subtotal - currentDiscount);
             const input = document.getElementById('cashInput');
 
             if (amount === 'exact') {
-                input.value = totalPrice;
+                input.value = finalAmount;
             } else {
                 input.value = amount;
             }
@@ -970,9 +1057,10 @@
         }
 
         function calculateChange() {
-            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const finalAmount = Math.max(0, subtotal - currentDiscount);
             const cashInput = parseFloat(document.getElementById('cashInput').value) || 0;
-            const change = cashInput - totalPrice;
+            const change = cashInput - finalAmount;
 
             const changeEl = document.getElementById('cashChange');
             if (change >= 0) {
@@ -985,18 +1073,19 @@
         }
 
         function processCheckout() {
-            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            let cashReceived = totalPrice;
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const finalAmount = Math.max(0, subtotal - currentDiscount);
+            let cashReceived = finalAmount;
             let change = 0;
             let paymentMethodName = 'เงินสด';
 
             if (activePaymentMethod === 'cash') {
                 cashReceived = parseFloat(document.getElementById('cashInput').value) || 0;
-                if (cashReceived < totalPrice) {
+                if (cashReceived < finalAmount) {
                     showToast('จำนวนเงินสดไม่พอชำระ', 'warning');
                     return;
                 }
-                change = cashReceived - totalPrice;
+                change = cashReceived - finalAmount;
                 paymentMethodName = 'เงินสด';
             } else if (activePaymentMethod === 'qr') {
                 paymentMethodName = 'QR PromptPay';
@@ -1006,7 +1095,6 @@
                 paymentMethodName = `App Delivery (${app}${ref ? ` / Ref: ${ref}` : ''})`;
             }
 
-            // Deduct Stocks Locally & Prepare Sync
             cart.forEach(cartItem => {
                 const prod = products.find(p => p.id === cartItem.id);
                 if (prod) {
@@ -1020,7 +1108,9 @@
                 datetime: now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
                 rawDate: now.toISOString(),
                 items: [...cart],
-                totalAmount: totalPrice,
+                subtotalAmount: subtotal,
+                discount: currentDiscount,
+                totalAmount: finalAmount,
                 paymentMethod: paymentMethodName,
                 cashReceived: cashReceived,
                 change: change
@@ -1028,7 +1118,6 @@
 
             salesHistory.unshift(orderRecord);
 
-            // Sync to Google Sheets API
             syncActionToGoogleSheet({
                 action: 'saveSaleAndStock',
                 order: orderRecord,
@@ -1050,36 +1139,51 @@
         function showReceiptModal(order) {
             const receiptDiv = document.getElementById('receiptContent');
             
-            const itemsHtml = order.items.map(item => `
+            const itemsHtml = (order.items || []).map(item => `
                 <div class="flex justify-between">
                     <span>${item.name} x${item.qty}</span>
                     <span>฿${(item.price * item.qty).toLocaleString()}</span>
                 </div>
             `).join('');
 
+            const discountRow = (order.discount || 0) > 0 ? `
+                <div class="flex justify-between text-rose-600">
+                    <span>ส่วนลด</span>
+                    <span>-฿${order.discount.toLocaleString()}</span>
+                </div>
+            ` : '';
+
             receiptDiv.innerHTML = `
                 <div class="text-center space-y-1 pb-3 border-b border-dashed border-slate-300">
                     <h2 class="font-extrabold text-base text-chumOrange-600">Fruit U CHUM</h2>
                     <p class="text-[11px] text-slate-500">ร้านผลไม้ปอกพร้อมทาน คุณภาพสดใหม่ทุกวัน</p>
-                    <p class="text-[10px] text-slate-400">เลขที่: ${order.orderId} | ${order.datetime}</p>
+                    <p class="text-[10px] text-slate-400">เลขที่: ${order.orderId} | ${formatOrderDateTime(order)}</p>
                 </div>
 
                 <div class="space-y-1.5 py-2 border-b border-dashed border-slate-300">
                     ${itemsHtml}
                 </div>
 
-                <div class="space-y-1 text-slate-700">
+                <div class="space-y-1 py-1.5 border-b border-dashed border-slate-300 text-slate-700">
+                    <div class="flex justify-between">
+                        <span>รวมราคาปกติ</span>
+                        <span>฿${(order.subtotalAmount || order.totalAmount).toLocaleString()}</span>
+                    </div>
+                    ${discountRow}
+                </div>
+
+                <div class="space-y-1 text-slate-700 pt-1">
                     <div class="flex justify-between font-bold text-sm">
-                        <span>ยอดรวมทั้งสิ้น</span>
-                        <span class="text-chumOrange-600">฿${order.totalAmount.toLocaleString()}</span>
+                        <span>ยอดชำระสุทธิ</span>
+                        <span class="text-chumOrange-600">฿${parseFloat(order.totalAmount || 0).toLocaleString()}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>ชำระด้วย (${order.paymentMethod})</span>
-                        <span>฿${order.cashReceived.toLocaleString()}</span>
+                        <span>฿${parseFloat(order.cashReceived || order.totalAmount).toLocaleString()}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>เงินทอน</span>
-                        <span>฿${order.change.toLocaleString()}</span>
+                        <span>฿${parseFloat(order.change || 0).toLocaleString()}</span>
                     </div>
                 </div>
 
@@ -1185,7 +1289,6 @@
             document.getElementById('invStatTotalValue').innerText = `฿${totalValue.toLocaleString()}`;
         }
 
-        // STOCK ADJUSTMENT MODAL
         function openStockAdjustModal(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -1233,7 +1336,6 @@
             renderProductGrid();
         }
 
-        // ADD / EDIT PRODUCT MODAL
         function openAddProductModal() {
             document.getElementById('productModalTitle').innerText = 'เพิ่มสินค้าผลไม้ใหม่';
             document.getElementById('productForm').reset();
@@ -1329,11 +1431,12 @@
 
             tbody.innerHTML = salesHistory.map(order => {
                 const itemsSummary = (order.items || []).map(i => `${i.name} (x${i.qty})`).join(', ');
+                const displayDateTime = formatOrderDateTime(order);
 
                 return `
                     <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                         <td class="p-4 font-bold text-slate-800">${order.orderId}</td>
-                        <td class="p-4 text-xs text-slate-500">${order.datetime}</td>
+                        <td class="p-4 text-xs text-slate-500">${displayDateTime}</td>
                         <td class="p-4 text-slate-700 max-w-xs truncate">${itemsSummary}</td>
                         <td class="p-4 text-center">
                             <span class="text-xs px-2.5 py-1 rounded-full font-medium ${order.paymentMethod && order.paymentMethod.includes('เงินสด') ? 'bg-chumOrange-100 text-chumOrange-800' : 'bg-chumGreen-100 text-chumGreen-800'}">
@@ -1427,12 +1530,18 @@
             }).join('');
         }
 
-        // --- PAYMENT METHOD BREAKDOWN (FOR CURRENT DAY) ---
+        // --- PAYMENT METHOD BREAKDOWN (แสดงครบทั้ง 3 ประเภทเสมอ) ---
         function renderPaymentMethodBreakdown(todayOrders) {
             const container = document.getElementById('categorySalesContainer');
             if (!container) return;
 
-            const methodStats = {};
+            // กำหนดโครงสร้างมาตรฐานทั้ง 3 ประเภท
+            const methodStats = {
+                'เงินสด': { amount: 0, count: 0, color: 'bg-chumOrange-500' },
+                'QR PromptPay': { amount: 0, count: 0, color: 'bg-chumGreen-500' },
+                'App Delivery': { amount: 0, count: 0, color: 'bg-blue-500' }
+            };
+
             let grandTotalSales = 0;
 
             todayOrders.forEach(order => {
@@ -1447,25 +1556,18 @@
                 const amount = parseFloat(order.totalAmount || 0);
                 grandTotalSales += amount;
 
-                if (!methodStats[groupName]) {
-                    methodStats[groupName] = { amount: 0, count: 0 };
+                if (methodStats[groupName]) {
+                    methodStats[groupName].amount += amount;
+                    methodStats[groupName].count += 1;
                 }
-                methodStats[groupName].amount += amount;
-                methodStats[groupName].count += 1;
             });
 
             const methods = Object.keys(methodStats);
-            if (methods.length === 0) {
-                container.innerHTML = `<div class="text-center text-xs text-slate-400 py-6">ยังไม่มีข้อมูลยอดขายประจำวันนี้</div>`;
-                return;
-            }
 
-            const colors = ['bg-chumOrange-500', 'bg-chumGreen-500', 'bg-blue-500', 'bg-purple-500'];
-
-            container.innerHTML = methods.map((method, idx) => {
+            container.innerHTML = methods.map(method => {
                 const stat = methodStats[method];
                 const percent = grandTotalSales > 0 ? Math.round((stat.amount / grandTotalSales) * 100) : 0;
-                const colorClass = colors[idx % colors.length];
+                const colorClass = stat.color;
 
                 return `
                     <div class="p-3 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100">
@@ -1488,7 +1590,7 @@
             }).join('');
         }
 
-        // --- WEEKLY SALES GRAPH (LAST 7 DAYS) ---
+        // --- WEEKLY SALES GRAPH ---
         function renderWeeklySalesChart() {
             const ctx = document.getElementById('weeklySalesChart');
             if (!ctx) return;
